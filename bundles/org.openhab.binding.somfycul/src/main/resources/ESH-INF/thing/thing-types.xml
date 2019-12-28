@@ -16,28 +16,28 @@
 				<label>Port Configuration</label>
 				<description></description>
 			</parameter-group>
-			
+
 			<parameter name="port" type="text" required="true" groupName="port">
 				<context>serial-port</context>
 				<label>Serial Port</label>
 				<description>Select serial port (COM1, /dev/ttyS0, ...)</description>
 				<default>/dev/ttyS0</default>
 			</parameter>
-			
+
 			<parameter name="baudrate" type="integer" required="true" groupName="port">
-                <context>serial-port</context>
-                <label>Baud Rate</label>
-                <description>Set the serial port baud rate</description>
-                <default>9600</default>
-                <limitToOptions>true</limitToOptions>
-                <options>
-                    <option value="2400">2400</option>
-                    <option value="9600">9600</option>
-                    <option value="19200">19200</option>
-                    <option value="57600">57600</option>
-                </options>
-            </parameter>
-            
+				<context>serial-port</context>
+				<label>Baud Rate</label>
+				<description>Set the serial port baud rate</description>
+				<default>9600</default>
+				<limitToOptions>true</limitToOptions>
+				<options>
+					<option value="2400">2400</option>
+					<option value="9600">9600</option>
+					<option value="19200">19200</option>
+					<option value="57600">57600</option>
+				</options>
+			</parameter>
+
 		</config-description>
 	</bridge-type>
 
