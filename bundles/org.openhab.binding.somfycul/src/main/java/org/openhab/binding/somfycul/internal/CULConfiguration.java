@@ -13,7 +13,7 @@
 package org.openhab.binding.somfycul.internal;
 
 /**
- * The {@link CULConfiguration} class contains fields mapping thing configuration parameters.
+ * Configuration of a CUL stick
  *
  * @author Daniel Weisser - Initial contribution
  */
