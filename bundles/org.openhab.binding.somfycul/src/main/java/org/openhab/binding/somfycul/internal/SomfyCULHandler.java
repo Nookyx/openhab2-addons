@@ -22,7 +22,6 @@ import java.util.Properties;
 
 import org.apache.commons.io.FilenameUtils;
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.config.core.ConfigConstants;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.StopMoveType;
@@ -48,8 +47,6 @@ import org.slf4j.LoggerFactory;
 public class SomfyCULHandler extends BaseThingHandler {
 
     private final Logger logger = LoggerFactory.getLogger(SomfyCULHandler.class);
-
-    private @Nullable SomfyCULConfiguration config;
 
     private File propertyFile;
     private Properties p;
@@ -136,7 +133,6 @@ public class SomfyCULHandler extends BaseThingHandler {
     @Override
     public void initialize() {
         logger.debug("Start initializing!");
-        config = getConfigAs(SomfyCULConfiguration.class);
         updateStatus(ThingStatus.ONLINE);
         logger.debug("Finished initializing!");
     }

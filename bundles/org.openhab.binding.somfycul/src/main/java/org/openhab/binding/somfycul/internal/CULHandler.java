@@ -50,16 +50,9 @@ public class CULHandler extends BaseBridgeHandler {
 
     private final Logger logger = LoggerFactory.getLogger(CULHandler.class);
 
-    private @Nullable SomfyCULConfiguration config;
+    private @Nullable CULConfiguration config;
 
     private static final String GNU_IO_RXTX_SERIAL_PORTS = "gnu.io.rxtx.SerialPorts";
-
-    private static final int baud = 9600;
-    private static final int databits = SerialPort.DATABITS_8;
-    private static final int stopbit = SerialPort.STOPBITS_1;
-    private static final int parity = SerialPort.PARITY_NONE;
-
-    private String port = "";
 
     private long lastCommandTime = 0;
 
@@ -150,16 +143,20 @@ public class CULHandler extends BaseBridgeHandler {
     @Override
     public void initialize() {
         logger.debug("Start initializing!");
-        config = getConfigAs(SomfyCULConfiguration.class);
-        port = (String) getThing().getConfiguration().get("port");
-        logger.info("got port: {}", port);
-        initSerialPort(port);
+        config = getConfigAs(CULConfiguration.class);
+        if (config.port == null) {
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.CONFIGURATION_ERROR, "Port must be set!");
+            return;
+        }
+        logger.info("got port: {}", config.port);
+        initSerialPort(config.port);
         try {
-            portId = CommPortIdentifier.getPortIdentifier(port);
+            portId = CommPortIdentifier.getPortIdentifier(config.port);
             // initialize serial port
             serialPort = portId.open("openHAB", 2000);
             // set port parameters
-            serialPort.setSerialPortParams(baud, databits, stopbit, parity);
+            serialPort.setSerialPortParams(config.baudrate, SerialPort.DATABITS_8, SerialPort.STOPBITS_1,
+                    SerialPort.PARITY_NONE);
             inputStream = serialPort.getInputStream();
             outputStream = serialPort.getOutputStream();
             // TODO Check version of CUL
@@ -177,7 +174,7 @@ public class CULHandler extends BaseBridgeHandler {
                 }
             }
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                    "Serial port '" + port + "' could not be found. Available ports are:\n" + sb.toString());
+                    "Serial port '" + config.port + "' could not be found. Available ports are:\n" + sb.toString());
         } catch (Exception e) {
             if (logger.isErrorEnabled()) {
                 logger.error("An error occurred while initializing the CUL connection.", e);

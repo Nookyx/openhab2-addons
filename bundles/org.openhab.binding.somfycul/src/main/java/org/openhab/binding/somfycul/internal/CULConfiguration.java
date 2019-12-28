@@ -13,14 +13,12 @@
 package org.openhab.binding.somfycul.internal;
 
 /**
- * The {@link SomfyCULConfiguration} class contains fields mapping thing configuration parameters.
+ * The {@link CULConfiguration} class contains fields mapping thing configuration parameters.
  *
  * @author Daniel Weisser - Initial contribution
  */
-public class SomfyCULConfiguration {
+public class CULConfiguration {
 
-    /**
-     * Sample configuration parameter. Replace with your own.
-     */
-    public String config1;
+    public String port;
+    public int baudrate;
 }
