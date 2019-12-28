@@ -4,29 +4,47 @@
 	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
 	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
 
-	<!-- Sample Thing Type -->
-	<thing-type id="sample">
-		<label>SomfyCUL Binding Thing</label>
-		<description>Sample thing for SomfyCUL Binding</description>
+	<!-- TODO Split in multiple files -->
 
-		<channels>
-			<channel id="channel1" typeId="sample-channel" />
-		</channels>
-
+	<!-- The CUL stick as bridge -->
+	<bridge-type id="culdevice">
+		<label>CUL stick</label>
+		<description>The CUL stick controlling the Somfy RTS devices.</description>
 		<config-description>
-			<parameter name="config1" type="text" required="true">
-				<label>Sample Parameter</label>
-				<description>This is a sample text configuration parameter</description>
+			<parameter name="port" type="text" required="true">
+				<context>serial-port</context>
+				<label>Serial Port</label>
+				<description>Select serial port (COM1, /dev/ttyS0, ...)</description>
+				<required>true</required>
+				<default>/dev/ttyS0</default>
 			</parameter>
+			<!-- TODO baud rate - https://www.openhab.org/addons/bindings/maxcul1/#binding-configuration -->
 		</config-description>
+	</bridge-type>
 
+	<!-- A Somfy RTS thing -->
+	<thing-type id="somfydevice">
+		<supported-bridge-type-refs>
+			<bridge-type-ref id="culdevice" />
+		</supported-bridge-type-refs>
+		<label>Somfy RTS rollershutter</label>
+		<description>Somfy RTS Roller Shutter</description>
+		<channels>
+			<channel id="position" typeId="position" />
+			<channel id="program" typeId="program" />
+		</channels>
 	</thing-type>
 
-	<!-- Sample Channel Type -->
-	<channel-type id="sample-channel">
-		<item-type>somfyculItem</item-type>
-		<label>SomfyCUL Binding Channel</label>
-		<description>Sample channel for SomfyCUL Binding</description>
+	<channel-type id="position">
+		<item-type>Rollershutter</item-type>
+		<label>Control</label>
+		<description>Device control (UP, DOWN, MY/STOP)</description>
+	</channel-type>
+
+	<channel-type id="program">
+		<item-type>Switch</item-type>
+		<label>Program</label>
+		<description>Device program</description>
 	</channel-type>
 
 </thing:thing-descriptions>

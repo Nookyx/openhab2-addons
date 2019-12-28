@@ -16,9 +16,12 @@ import static org.openhab.binding.somfycul.internal.SomfyCULBindingConstants.*;
 
 import java.util.Collections;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.binding.BaseThingHandlerFactory;
@@ -36,7 +39,9 @@ import org.osgi.service.component.annotations.Component;
 @Component(configurationPid = "binding.somfycul", service = ThingHandlerFactory.class)
 public class SomfyCULHandlerFactory extends BaseThingHandlerFactory {
 
-    private static final Set<ThingTypeUID> SUPPORTED_THING_TYPES_UIDS = Collections.singleton(THING_TYPE_SAMPLE);
+    // TODO Split to two handlers (like PulseAudio)
+    private static final Set<ThingTypeUID> SUPPORTED_THING_TYPES_UIDS = Collections
+            .unmodifiableSet(Stream.of(CUL_DEVICE_THING_TYPE, SOMFY_DEVICE_THING_TYPE).collect(Collectors.toSet()));
 
     @Override
     public boolean supportsThingType(ThingTypeUID thingTypeUID) {
@@ -47,7 +52,9 @@ public class SomfyCULHandlerFactory extends BaseThingHandlerFactory {
     protected @Nullable ThingHandler createHandler(Thing thing) {
         ThingTypeUID thingTypeUID = thing.getThingTypeUID();
 
-        if (THING_TYPE_SAMPLE.equals(thingTypeUID)) {
+        if (thingTypeUID.equals(CUL_DEVICE_THING_TYPE) && thing instanceof Bridge) {
+            return new CULHandler((Bridge) thing);
+        } else if (thingTypeUID.equals(SOMFY_DEVICE_THING_TYPE)) {
             return new SomfyCULHandler(thing);
         }
 

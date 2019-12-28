@@ -14,14 +14,28 @@ package org.openhab.binding.somfycul.internal;
 
 import static org.openhab.binding.somfycul.internal.SomfyCULBindingConstants.*;
 
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Properties;
+
+import org.apache.commons.io.FilenameUtils;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.smarthome.config.core.ConfigConstants;
+import org.eclipse.smarthome.core.library.types.OnOffType;
+import org.eclipse.smarthome.core.library.types.StopMoveType;
+import org.eclipse.smarthome.core.library.types.UpDownType;
+import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.thing.ThingStatus;
 import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
+import org.eclipse.smarthome.core.thing.binding.ThingHandler;
 import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
+import org.eclipse.smarthome.core.types.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,61 +52,145 @@ public class SomfyCULHandler extends BaseThingHandler {
 
     private @Nullable SomfyCULConfiguration config;
 
+    private File propertyFile;
+    private Properties p;
+
+    /**
+     * Initializes the thing. As persistent state is necessary the properties are stored in the user data directory and
+     * fetched within the constructor.
+     *
+     * @param thing
+     */
     public SomfyCULHandler(Thing thing) {
         super(thing);
+        propertyFile = new File(ConfigConstants.getUserDataFolder() + File.separator + "somfycul" + File.separator
+                + thing.getUID().getAsString().replace(':', '_') + ".properties");
+        p = initProperties();
     }
 
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
-        if (CHANNEL_1.equals(channelUID.getId())) {
-            if (command instanceof RefreshType) {
-                // TODO: handle data refresh
+        logger.info("channelUID: {}, command: {}", channelUID, command);
+        SomfyCommand somfyCommand = null;
+        if (channelUID.getId().equals(POSITION)) {
+            if (command instanceof UpDownType) {
+                switch ((UpDownType) command) {
+                    case UP:
+                        somfyCommand = SomfyCommand.UP;
+                        break;
+                    case DOWN:
+                        somfyCommand = SomfyCommand.DOWN;
+                        break;
+                }
+            } else if (command instanceof StopMoveType) {
+                switch ((StopMoveType) command) {
+                    case STOP:
+                        somfyCommand = SomfyCommand.MY;
+                        break;
+                    default:
+                        break;
+                }
+
             }
+        } else if (channelUID.getId().equals(PROGRAM)) {
+            if (command instanceof OnOffType) {
+                // Don't check for on/off - always trigger program mode
+                somfyCommand = SomfyCommand.PROG;
+            }
+        }
+        Bridge bridge = getBridge();
+        if (somfyCommand != null && bridge != null) {
+            // We delegate the execution to the bridge handler
+            ThingHandler bridgeHandler = bridge.getHandler();
+            if (bridgeHandler instanceof CULHandler) {
+                logger.debug("rolling code before command {}", p.getProperty("rollingCode"));
 
-            // TODO: handle command
+                boolean executedSuccessfully = ((CULHandler) bridgeHandler).executeCULCommand(getThing(), somfyCommand,
+                        p.getProperty("rollingCode"), p.getProperty("address"));
+                if (executedSuccessfully && command instanceof State) {
+                    updateState(channelUID, (State) command);
 
-            // Note: if communication with thing fails for some reason,
-            // indicate that by setting the status with detail information:
-            // updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-            // "Could not control device at IP address x.x.x.x");
+                    long newRollingCode = Long.decode("0x" + p.getProperty("rollingCode")) + 1;
+                    p.setProperty("rollingCode", String.format("%04X", newRollingCode));
+                    logger.debug("Updated rolling code to {}", p.getProperty("rollingCode"));
+                    p.setProperty("address", p.getProperty("address"));
+
+                    try {
+                        p.store(new FileWriter(propertyFile), "Last command: " + somfyCommand);
+                    } catch (IOException e) {
+                        logger.error("Error occured on writing the property file.", e);
+                    }
+                }
+            }
         }
     }
 
+    /**
+     * The roller shutter is by default initialized and set to online, as there is no feedback that can check if the
+     * shutter is available.
+     */
     @Override
     public void initialize() {
-        // logger.debug("Start initializing!");
+        logger.debug("Start initializing!");
         config = getConfigAs(SomfyCULConfiguration.class);
+        updateStatus(ThingStatus.ONLINE);
+        logger.debug("Finished initializing!");
+    }
 
-        // TODO: Initialize the handler.
-        // The framework requires you to return from this method quickly. Also, before leaving this method a thing
-        // status from one of ONLINE, OFFLINE or UNKNOWN must be set. This might already be the real thing status in
-        // case you can decide it directly.
-        // In case you can not decide the thing status directly (e.g. for long running connection handshake using WAN
-        // access or similar) you should set status UNKNOWN here and then decide the real status asynchronously in the
-        // background.
+    /**
+     * Initializes the properties for the thing (shutter).
+     *
+     * @return Valid properties (address and rollingCode)
+     */
+    private Properties initProperties() {
+        p = new Properties();
 
-        // set the thing status to UNKNOWN temporarily and let the background task decide for the real status.
-        // the framework is then able to reuse the resources from the thing handler initialization.
-        // we set this upfront to reliably check status updates in unit tests.
-        updateStatus(ThingStatus.UNKNOWN);
+        try {
+            if (!propertyFile.exists()) {
+                logger.debug("Trying to create file {}.", propertyFile);
+                Files.createParentDirs(propertyFile);
+                FileWriter fileWriter = new FileWriter(propertyFile);
 
-        // Example for background initialization:
-        scheduler.execute(() -> {
-            boolean thingReachable = true; // <background task with long running initialization here>
-            // when done do:
-            if (thingReachable) {
-                updateStatus(ThingStatus.ONLINE);
+                p.setProperty("rollingCode", "0000");
+                p.setProperty("address", String.format("%06X", getNewAddressForShutter()));
+                p.store(fileWriter, "Initialized fields");
+                fileWriter.close();
+                logger.info("Created new property file {}", propertyFile);
             } else {
-                updateStatus(ThingStatus.OFFLINE);
+                FileReader fileReader = new FileReader(propertyFile);
+                p.load(fileReader);
+                fileReader.close();
+                logger.info("Read properties from file {}", propertyFile);
             }
-        });
+        } catch (IOException e) {
+            logger.error("Error occured on writing the property file.", e);
+        }
+        return p;
+    }
 
-        // logger.debug("Finished initializing!");
-
-        // Note: When initialization can NOT be done set the status with more details for further
-        // analysis. See also class ThingStatusDetail for all available status details.
-        // Add a description to give user information to understand why thing does not work as expected. E.g.
-        // updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
-        // "Can not access device as username and/or password are invalid");
+    /**
+     * Calculates a new address for the shutter. Therefore all property files are read and a new address is calculated.
+     *
+     * @return New 6-digit address for the shutter
+     * @throws IOException
+     */
+    private long getNewAddressForShutter() throws IOException {
+        File directory = propertyFile.getParentFile();
+        long maxAddress = 0;
+        for (File file : directory.listFiles()) {
+            if (FilenameUtils.getExtension(file.getName()).equals("properties") && !file.equals(propertyFile)) {
+                logger.info("Parsing properties from file {}", file);
+                FileReader fileReader = new FileReader(file);
+                Properties other = new Properties();
+                other.load(fileReader);
+                long currentAddress = Long.decode("0x" + other.getProperty("address"));
+                if (currentAddress > maxAddress) {
+                    maxAddress = currentAddress;
+                }
+                fileReader.close();
+            }
+        }
+        logger.info("Current max address is {}", maxAddress);
+        return maxAddress + 1;
     }
 }
