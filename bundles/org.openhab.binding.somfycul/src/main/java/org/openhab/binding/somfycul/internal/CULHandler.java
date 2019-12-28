@@ -17,6 +17,8 @@ import java.io.OutputStream;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.io.IOUtils;
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -34,9 +36,6 @@ import org.slf4j.LoggerFactory;
 import gnu.io.CommPortIdentifier;
 import gnu.io.NoSuchPortException;
 import gnu.io.SerialPort;
-import jersey.repackaged.com.google.common.base.Joiner;
-import jersey.repackaged.com.google.common.base.Splitter;
-import jersey.repackaged.com.google.common.collect.Sets;
 
 /**
  * The {@link CULHandler} is responsible for handling commands, which are
@@ -136,14 +135,15 @@ public class CULHandler extends BaseBridgeHandler {
     private void initSerialPort(String port) {
         String serialPortsProperty = System.getProperty(GNU_IO_RXTX_SERIAL_PORTS);
         Set<String> serialPorts = null;
+
         if (serialPortsProperty != null) {
-            serialPorts = Sets.newHashSet(Splitter.on(":").split(serialPortsProperty));
+            serialPorts = Stream.of(serialPortsProperty.split(":")).collect(Collectors.toSet());
         } else {
-            serialPorts = new HashSet<String>();
+            serialPorts = new HashSet<>();
         }
         if (serialPorts.add(port)) {
             logger.debug("Added {} to the {} system property.", port, GNU_IO_RXTX_SERIAL_PORTS);
-            System.setProperty(GNU_IO_RXTX_SERIAL_PORTS, Joiner.on(":").join(serialPorts));
+            System.setProperty(GNU_IO_RXTX_SERIAL_PORTS, serialPorts.stream().collect(Collectors.joining(":")));
         }
     }
 
