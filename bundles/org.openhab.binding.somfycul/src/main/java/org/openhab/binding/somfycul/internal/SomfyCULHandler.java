@@ -18,7 +18,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.Properties;
 
 import org.apache.commons.io.FilenameUtils;
@@ -63,8 +62,13 @@ public class SomfyCULHandler extends BaseThingHandler {
      */
     public SomfyCULHandler(Thing thing) {
         super(thing);
-        propertyFile = new File(ConfigConstants.getUserDataFolder() + File.separator + "somfycul" + File.separator
-                + thing.getUID().getAsString().replace(':', '_') + ".properties");
+        String somfyFolderName = ConfigConstants.getUserDataFolder() + File.separator + "somfycul";
+        File folder = new File(somfyFolderName);
+        if (!folder.exists()) {
+            folder.mkdirs();
+        }
+        propertyFile = new File(
+                somfyFolderName + File.separator + thing.getUID().getAsString().replace(':', '_') + ".properties");
         p = initProperties();
     }
 
@@ -148,9 +152,7 @@ public class SomfyCULHandler extends BaseThingHandler {
         try {
             if (!propertyFile.exists()) {
                 logger.debug("Trying to create file {}.", propertyFile);
-                Files.createParentDirs(propertyFile);
                 FileWriter fileWriter = new FileWriter(propertyFile);
-
                 p.setProperty("rollingCode", "0000");
                 p.setProperty("address", String.format("%06X", getNewAddressForShutter()));
                 p.store(fileWriter, "Initialized fields");
