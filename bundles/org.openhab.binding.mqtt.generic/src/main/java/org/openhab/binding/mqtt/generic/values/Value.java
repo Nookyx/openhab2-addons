@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2020 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -94,8 +94,11 @@ public abstract class Value {
         return state;
     }
 
-    public String getMQTTpublishValue() {
-        return state.toString();
+    public String getMQTTpublishValue(@Nullable String pattern) {
+        if (pattern == null) {
+            return state.format("%s");
+        }
+        return state.format(pattern);
     }
 
     /**
